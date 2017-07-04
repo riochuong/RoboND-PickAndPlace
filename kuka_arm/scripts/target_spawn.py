@@ -7,6 +7,7 @@ import yaml
 import rospy
 import rospkg
 import sys
+import numpy as np
 from random import randint
 
 
