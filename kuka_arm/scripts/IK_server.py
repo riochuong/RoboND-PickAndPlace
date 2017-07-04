@@ -202,41 +202,33 @@ def handle_calculate_IK(req):
             print "l35 "+str(l35)
             print "l25 "+str(l25)
             # THETA 1
-            theta1 = math.atan2(wc[1],wc[0])	  
+            theta1 = math.atan2(wc[1],wc[0])	
+            print("theta 1 : "+str(theta1))  
+            
             # THETA 2
             theta21 = math.atan2(yc,xc)
             cos_theta22 = ((l25 * l25) + (s[a2] * s[a2]) - (l35 * l35)) / (2 * s[a2] * l25)
-            # if (wc[2] < 0):
-            #     theta22 = math.atan2(-sqrt(1 - cos_theta22*cos_theta22),cos_theta22)
-            # else:
+            print("cos theta_22 : "+str(cos_theta22))
+            if (cos_theta22 >= 1):
+                cos_theta22 = 1
             theta22 = math.atan2(sqrt(1 - cos_theta22*cos_theta22),cos_theta22)
-            theta2 = ((theta22 + theta21) - np.pi/2) * (-1)
-            # THETA 3
-            # METHOD 1
-            # cosine_theta31 = -1 * (s[a3] / l35)
-            # cosine_theta32 = (s[a2] * s[a2] + l35 * l35 - l25 * l25) / (2 * s[a2] * l35)
-            # theta31 = math.atan2(cosine_theta31, sqrt(1 - cosine_theta31 * cosine_theta31))
-            # theta32 = math.atan2(cosine_theta32, sqrt(1 - cosine_theta32 * cosine_theta32))
-            # theta3 = np.pi - theta31 - theta32
 
-            #METHOD2
+            theta2 = ((theta22 + theta21) - np.pi/2) * (-1)
+            
+            # THETA 3
             theta31 = math.atan2(s[a3],s[d4])
             cosine_theta32 = (l25*l25 - s[a2]*s[a2] - l35*l35) / (2 * s[a2] * l35)
+            if (cosine_theta32 >= 1):
+                cosine_theta32 = 1
             theta32 = math.acos(cosine_theta32)
             theta3 = theta32 - theta31 - np.pi/2
 
             # THETA 4,5,6
             r36 = R3_6.subs({q1: theta1, q2: theta2, q3:theta3,rx:yaw, ry:pitch, rz: roll}) #R3_0 * t0g[:3,:3] 
-            #r36 = r36.subs({q1: theta1, q2: theta2, q3:theta3,rx:yaw, ry:pitch, rz: roll})
             print("r36 "+str(r36))
             theta4, theta5, theta6 = tf.transformations.euler_from_matrix(np.matrix(r36),axes='ryzx')
-            
-            if (theta4 > np.pi):
-                theta5 = theta5 + np.pi/2
-                theta6 = theta6 + np.pi/2
-            else:
-                theta5 = theta5 - np.pi/2
-                theta6 = theta6 - np.pi/2
+            theta5 = theta5 - np.pi/2
+            theta6 = theta6 - np.pi/2
             print("theta 1", theta1)
             print("theta 2", theta2)
             print("theta 3", theta3)
