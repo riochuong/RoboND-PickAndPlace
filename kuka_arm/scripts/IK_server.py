@@ -68,47 +68,11 @@ T2_3 = Matrix([[cos(q3),                        -sin(q3),             0,        
 T2_3 = T2_3.subs(s)
 
 
-## T3_4
-T3_4 = Matrix([[cos(q4),                        -sin(q4),             0,                  a3],
-               [sin(q4)*cos(alpha3), cos(q4)*cos(alpha3),  -sin(alpha3),     -sin(alpha3)*d4],
-               [sin(q4)*sin(alpha3), cos(q4)*sin(alpha3),   cos(alpha3),      cos(alpha3)*d4],
-               [                  0,                    0,            0,     1]])
-T3_4 = T3_4.subs(s)
-
-
-## T4_5
-T4_5 = Matrix([[cos(q5),                        -sin(q5),             0,                  a4],
-               [sin(q5)*cos(alpha4), cos(q5)*cos(alpha4),  -sin(alpha4),     -sin(alpha4)*d5],
-               [sin(q5)*sin(alpha4), cos(q5)*sin(alpha4),   cos(alpha4),      cos(alpha4)*d5],
-               [                  0,                    0,            0,     1]])
-T4_5 = T4_5.subs(s)
-
-
-
-## T5_6
-T5_6 = Matrix([[cos(q6),                        -sin(q6),             0,                  a5],
-               [sin(q6)*cos(alpha5), cos(q6)*cos(alpha5),  -sin(alpha5),     -sin(alpha5)*d6],
-               [sin(q6)*sin(alpha5), cos(q6)*sin(alpha5),   cos(alpha5),      cos(alpha5)*d6],
-               [                  0,                    0,            0,     1]])
-T5_6 = T5_6.subs(s)
-
-## T6_G
-T6_G = Matrix([[            cos(q7),            -sin(q7),             0,                  a6],
-               [sin(q7)*cos(alpha6), cos(q7)*cos(alpha6),  -sin(alpha6),     -sin(alpha6)*d7],
-               [sin(q7)*sin(alpha6), cos(q7)*sin(alpha6),   cos(alpha6),      cos(alpha6)*d7],
-               [                  0,                    0,            0,     1]])
-T6_G = T6_G.subs(s)
-
 T0_2 = simplify(T0_1 * T1_2) # base_link to link_2
 T0_3 = simplify(T0_2 * T2_3) # base_link to link_3
-# T0_4 = simplify(T0_3 * T3_4) # base_link to link_4
-# T0_5 = simplify(T0_4 * T4_5) # base_link to link_5
-# T0_6 = simplify(T0_5 * T5_6) # base_link to link_6
-# T0_G = simplify(T0_6 * T6_G) # base_link to gripper_link
 
 ## Correction needed to account of orientation difference between deifintion of gripper link in URDF
 ## versus DH convention
-
 R_z = Matrix([[    cos(np.pi),     -sin(np.pi),         0,            0],
               [    sin(np.pi),      cos(np.pi),         0,            0],
               [             0,               0,         1,            0],
@@ -121,9 +85,8 @@ R_y = Matrix([[    cos(-np.pi/2),               0,         sin(-np.pi/2),       
               [             0,                  0,                     0,            1]
              ])
 
+# construct correction matrix
 R_corr = simplify(R_z * R_y)
-
-# T_total = simplify(T0_G * R_corr)
 
 rx,ry,rz = symbols('rx,ry,rz')
 
@@ -141,10 +104,10 @@ Rot_z = Matrix([[ cos(rz), -sin(rz),        0],
 
 R0_3 = T0_3[:3,:3]
 
+# apply inverse matrix rule to get the correct 
 R3_0 = R0_3.inv()
 
-#R0_6 = T0_6[:3,:3]
-
+# Transformation matrix to get to R36
 R3_6 = simplify(R3_0 * Rot_z * Rot_y * Rot_x)
 
 
@@ -162,8 +125,8 @@ def handle_calculate_IK(req):
 
             
             # Extract end-effector position and orientation from request
-	    # px,py,pz = end-effector position
-	    # roll, pitch, yaw = end-effector orientation
+	         # px,py,pz = end-effector position
+	           # roll, pitch, yaw = end-effector orientation
             px = req.poses[x].position.x
             py = req.poses[x].position.y
             pz = req.poses[x].position.z
@@ -181,6 +144,7 @@ def handle_calculate_IK(req):
             t0g[0,3] = px
             t0g[1,3] = py
             t0g[2,3] = pz
+            # now find the normal vector
             n = t0g[:-1,2:3]
             p = t0g[:-1,3:4]
 
@@ -209,23 +173,30 @@ def handle_calculate_IK(req):
             theta21 = math.atan2(yc,xc)
             cos_theta22 = ((l25 * l25) + (s[a2] * s[a2]) - (l35 * l35)) / (2 * s[a2] * l25)
             print("cos theta_22 : "+str(cos_theta22))
+            # just in case cos_theta 22 is singular
             if (cos_theta22 >= 1):
                 cos_theta22 = 1
             theta22 = math.atan2(sqrt(1 - cos_theta22*cos_theta22),cos_theta22)
+            # based on my experiments from the notebook this angle looks opposite with the FK
+            # so just reverse it to get to the correct orientation
             theta2 = ((theta22 + theta21) - np.pi/2) * (-1)
             
             # THETA 3
             theta31 = math.atan2(s[a3],s[d4])
+            # cosine_theta32 = -cos (np.pi - theta_32)
             cosine_theta32 = (l25*l25 - s[a2]*s[a2] - l35*l35) / (2 * s[a2] * l35)
+            # fix cosine to just in case we hit a special case that 
             if (cosine_theta32 >= 1):
                 cosine_theta32 = 1
             theta32 = math.acos(cosine_theta32)
             theta3 = theta32 - theta31 - np.pi/2
 
             # THETA 4,5,6
-            r36 = R3_6.subs({q1: theta1, q2: theta2, q3:theta3,rx:yaw, ry:pitch, rz: roll}) #R3_0 * t0g[:3,:3] 
-            #r36 = r36.subs({q1: theta1, q2: theta2, q3:theta3, rx:yaw, ry:pitch, rz: roll})
+            # eval R36 with value
+            r36 = R3_6.subs({q1: theta1, q2: theta2, q3:theta3, rx:yaw, ry:pitch, rz: roll}) #R3_0 * t0g[:3,:3] 
             print("r36 "+str(r36))
+            # some trial and errors as well as slack post's from Alex Caveny  to figure out the correct orientation for axes
+            # this is the euler angles for the rotation matrix R3_6 = R4(theta4) * R5(theta5) * R6(theta6)
             theta4, theta5, theta6 = tf.transformations.euler_from_matrix(np.matrix(r36),axes='ryzx')
             theta5 = theta5 - np.pi/2
             theta6 = theta6 - np.pi/2
