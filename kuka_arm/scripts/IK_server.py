@@ -173,13 +173,16 @@ def handle_calculate_IK(req):
             theta21 = math.atan2(yc,xc)
             cos_theta22 = ((l25 * l25) + (s[a2] * s[a2]) - (l35 * l35)) / (2 * s[a2] * l25)
             print("cos theta_22 : "+str(cos_theta22))
-            # just in case cos_theta 22 is singular
+            # just in case cos_theta 22 is singular..just approximate with 0
             if (cos_theta22 >= 1):
                 cos_theta22 = 1
-            theta22 = math.atan2(sqrt(1 - cos_theta22*cos_theta22),cos_theta22)
+            theta22_pos = math.atan2(sqrt(1 - cos_theta22*cos_theta22),cos_theta22)
+            theta22_neg = math.atan2(-sqrt(1 -cos_theta22*cos_theta22),cos_theta22)
             # based on my experiments from the notebook this angle looks opposite with the FK
             # so just reverse it to get to the correct orientation
-            theta2 = ((theta22 + theta21) - np.pi/2) * (-1)
+            theta2 = ((theta22_pos + theta21) - np.pi/2) * (-1)
+            if not ( theta2 >= -0.79 and theta2 <= 1.48):
+                theta2 = ((theta_neg + theta21) - np.pi/2) * (-1)
             
             # THETA 3
             theta31 = math.atan2(s[a3],s[d4])
@@ -188,8 +191,11 @@ def handle_calculate_IK(req):
             # fix cosine to just in case we hit a special case that 
             if (cosine_theta32 >= 1):
                 cosine_theta32 = 1
-            theta32 = math.acos(cosine_theta32)
-            theta3 = theta32 - theta31 - np.pi/2
+            #theta32 = math.acos(cosine_theta32)
+            theta32_pos = math.atan2(sqrt(1 - cosine_theta32*cosine_theta32), cosine_theta32)
+            theta3 = theta32_pos - theta31 - np.pi/2
+            if not (theta3 >= -3.67 and theta3 < 1.13):
+                theta3 = math.atan2(-sqrt(1 - cosine_theta32*cosine_theta32), cosine_theta32)
 
             # THETA 4,5,6
             # eval R36 with value
@@ -198,7 +204,7 @@ def handle_calculate_IK(req):
             # some trial and errors as well as slack post's from Alex Caveny  to figure out the correct orientation for axes
             # this is the euler angles for the rotation matrix R3_6 = R4(theta4) * R5(theta5) * R6(theta6)
             theta4, theta5, theta6 = tf.transformations.euler_from_matrix(np.matrix(r36),axes='ryzx')
-            theta5 = theta5 - np.pi/2
+            theta5 = np.clip(theta5 - np.pi/2, -2.08,2.18)
             theta6 = theta6 - np.pi/2
          
             print("theta 1", theta1)
