@@ -212,7 +212,6 @@ def handle_calculate_IK(req):
             if (cos_theta22 >= 1):
                 cos_theta22 = 1
             theta22 = math.atan2(sqrt(1 - cos_theta22*cos_theta22),cos_theta22)
-
             theta2 = ((theta22 + theta21) - np.pi/2) * (-1)
             
             # THETA 3
@@ -225,10 +224,12 @@ def handle_calculate_IK(req):
 
             # THETA 4,5,6
             r36 = R3_6.subs({q1: theta1, q2: theta2, q3:theta3,rx:yaw, ry:pitch, rz: roll}) #R3_0 * t0g[:3,:3] 
+            #r36 = r36.subs({q1: theta1, q2: theta2, q3:theta3, rx:yaw, ry:pitch, rz: roll})
             print("r36 "+str(r36))
             theta4, theta5, theta6 = tf.transformations.euler_from_matrix(np.matrix(r36),axes='ryzx')
             theta5 = theta5 - np.pi/2
             theta6 = theta6 - np.pi/2
+         
             print("theta 1", theta1)
             print("theta 2", theta2)
             print("theta 3", theta3)
