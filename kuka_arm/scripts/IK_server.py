@@ -153,7 +153,11 @@ def handle_calculate_IK(req):
             wc = p - n
             print "WC: "+str(wc)
             
-            # calculate theta 1
+            #======================
+            #
+            # CALCULATE THETA 1
+            #
+            #======================
             xc = sqrt(wc[0]*wc[0] + wc[1]*wc[1]) - s[a1]
             yc = wc[2] - s[d1]
 
@@ -169,7 +173,11 @@ def handle_calculate_IK(req):
             theta1 = math.atan2(wc[1],wc[0])	
             print("theta 1 : "+str(theta1))  
             
-            # THETA 2
+            #=====================
+            #
+            # CALCULATE THETA 2
+            #
+            #======================
             theta21 = math.atan2(yc,xc)
             cos_theta22 = ((l25 * l25) + (s[a2] * s[a2]) - (l35 * l35)) / (2 * s[a2] * l25)
             print("cos theta_22 : "+str(cos_theta22))
@@ -181,21 +189,52 @@ def handle_calculate_IK(req):
             # based on my experiments from the notebook this angle looks opposite with the FK
             # so just reverse it to get to the correct orientation
             theta2 = ((theta22_pos + theta21) - np.pi/2) * (-1)
+            # if theta2 is not in the range of joint 2 then we can use the negative solution of sign
             if not ( theta2 >= -0.79 and theta2 <= 1.48):
-                theta2 = ((theta_neg + theta21) - np.pi/2) * (-1)
+                print(" USE NEG. THETA2 SOLUTION")
+                theta2 = ((theta_neg + theta21) - np.pi/2) * (-1)   
             
-            # THETA 3
-            theta31 = math.atan2(s[a3],s[d4])
+
+            #=======================
+            #
+            # CALCULATE THETA 3
+            #
+            # =======================
+            theta3 = 0
             # cosine_theta32 = -cos (np.pi - theta_32)
             cosine_theta32 = (l25*l25 - s[a2]*s[a2] - l35*l35) / (2 * s[a2] * l35)
+            print "cosine_theta32 ",cosine_theta32
             # fix cosine to just in case we hit a special case that 
             if (cosine_theta32 >= 1):
                 cosine_theta32 = 1
             #theta32 = math.acos(cosine_theta32)
-            theta32_pos = math.atan2(sqrt(1 - cosine_theta32*cosine_theta32), cosine_theta32)
-            theta3 = theta32_pos - theta31 - np.pi/2
-            if not (theta3 >= -3.67 and theta3 < 1.13):
-                theta3 = math.atan2(-sqrt(1 - cosine_theta32*cosine_theta32), cosine_theta32)
+            if (cosine_theta32 <= 0):
+                print("Cosine theta32 is NEGATIVE")
+                theta31 = math.atan2(s[a3],s[d4])
+                theta32_pos = math.atan2(sqrt(1 - cosine_theta32*cosine_theta32), cosine_theta32)
+                theta32_neg = math.atan2(-sqrt(1 - cosine_theta32*cosine_theta32), cosine_theta32)
+                theta3 = theta32_pos - theta31 - np.pi/2
+                if not (theta3 >= -3.67 and theta3 < 1.13):
+                    print(" USE NEG. THETA3 SOLUTION")
+                    theta3 = theta32_neg - theta31 - np.pi/2
+            else: # theta32 is smaller than 90
+                print("Cosine theta32 is POSITIVE")
+                theta32_1 = math.atan2(sqrt(1 - cosine_theta32*cosine_theta32), cosine_theta32)
+                theta32_2 = math.atan2(-sqrt(1 - cosine_theta32*cosine_theta32), cosine_theta32)
+                if (theta32_1 <= np.pi/2):
+                    theta32 = theta32_1
+                else:
+                    theta32 = theta32_2
+                theta31 = math.atan2(s[d4],s[a3])
+                theta3 = np.pi - theta32 - theta31
+                theta3 = theta3 * (-1)
+                # use the other solution
+                if not (theta3 >= -3.67 and theta3 < 1.13):
+                    theta3 = np.pi - theta32_2 - theta31 
+                    theta3 = theta3 * (-1)
+                    in_range = (theta3 >= -3.67 and theta3 < 1.13)
+                    print ("Alternative solution : ",theta3, " in range: ", in_range)
+                
 
             # THETA 4,5,6
             # eval R36 with value
@@ -204,6 +243,7 @@ def handle_calculate_IK(req):
             # some trial and errors as well as slack post's from Alex Caveny  to figure out the correct orientation for axes
             # this is the euler angles for the rotation matrix R3_6 = R4(theta4) * R5(theta5) * R6(theta6)
             theta4, theta5, theta6 = tf.transformations.euler_from_matrix(np.matrix(r36),axes='ryzx')
+            # avoid collision between gripper and joint 6 
             theta5 = np.clip(theta5 - np.pi/2, -2.08,2.18)
             theta6 = theta6 - np.pi/2
          
