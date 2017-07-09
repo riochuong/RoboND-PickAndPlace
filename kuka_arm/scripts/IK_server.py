@@ -192,7 +192,7 @@ def handle_calculate_IK(req):
             # if theta2 is not in the range of joint 2 then we can use the negative solution of sign
             if not ( theta2 >= -0.79 and theta2 <= 1.48):
                 print(" USE NEG. THETA2 SOLUTION")
-                theta2 = ((theta_neg + theta21) - np.pi/2) * (-1)   
+                theta2 = ((theta22_neg + theta21) - np.pi/2) * (-1)   
             
 
             #=======================
